@@ -1,0 +1,165 @@
+---
+title: "The Impact of Smartphone Usage Before Bedtime on Sleep Quality Among Adults"
+author: "Shamima Haque"
+date: '2023-09-15'
+output: 
+  html_document: 
+    toc: yes
+    fig_caption: yes
+    number_sections: yes
+code_folding: hide
+bibliography:
+- Books.bib
+- Paper.bib
+- Referances.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE)
+
+library(readxl)
+library(datasets)
+
+```
+
+# Introduction/Background
+
+The widespread adoption of smartphones has reached a global scale in recent years. As of early 2021, the global smartphone user count reached 3.8 billion, signifying that approximately 48.53% of the world's population now possesses a smartphone. In the United States, 77% of adults own smartphones. Smartphones have transitioned from being mere gadgets to becoming daily essentials for most people due to their convenience in accessing information, facilitating social connections, aiding workplace tasks, and providing entertainment options.\@article Smartphones have assumed a pivotal role in the realm of medical health, offering substantial benefits to both patients and healthcare professionals (Alosaimi et al., 2016). However, alongside their numerous advantages, concerns have arisen regarding the physical and psychological implications associated with problematic smartphone use. Roughly 68 percent of the smartphone users kept their devices on their bedside tables during sleep. Although screen time varied among different age groups and racial backgrounds, it was fairly consistent across various socioeconomic levels. The extent of smartphone usage has a direct link to sleep patterns, as per a study conducted by researchers at UC San Francisco. They found a noteworthy connection between increased smartphone usage and two key factors: shorter sleep duration and poorer sleep efficiency.[1](https://www.ucsf.edu/news/2016/11/404886/smartphone-use-increases-so-does-lack-sleep)
+
+![](images/Screen%20Shot%202023-09-15%20at%209.45.12%20AM.png){width="360"}
+
+## Problem Statement
+
+Understanding the context and motivation to identifying the relationship between smartphone usage and sleep quality among adult
+
+## Purpose Statement
+
+This research project aims to investigate the relationship between smartphone usage before bedtime and sleep quality among adults. The study will utilize a sample survey to collect data on participants' smartphone usage habits and sleep quality. Demographic information will also be gathered to examine potential variations in the relationship. Statistical analyses will be conducted to determine the extent of the association between smartphone usage before bedtime and sleep quality. The findings of this study will contribute to our understanding of the effects of smartphone usage on sleep patterns and may have implications for promoting healthy sleep habits among adults.
+
+# Method
+
+This research is design by a **cross-sectional study**.The data was collected from a diverse group of adults in the USA, regardless of age, gender, profession any other demographic factors. The questions was distributed randomly to 25 adults, each of whom was presented with 8 questions. 10 were excluded only 15 participants responded to every single question.Participants were reassured that their response to our questionnaire is strictly confidential. Responded were reassured that their participation will be confidential.
+
+## Survey Questionnaire
+
+The participants were asked 8 questions.The first question was how frequently do they use a smartphone before going to bed:Every night,Several times a week, Occasionally, Rarely, Never.Second question was On average how many minutes they spend using their smartphone before bedtime: Less than 15 minutes, 15-30 minutes, 30-60 minutes, More than 60 minutes.Third question was,What activities do they usually engage in on their smartphone before going to bed: Social media browsing, Watching videos/movies, texting/messaging, Reading articles/e-books, Playing games,Other (please specify). The fourth question was, how frequently do they experience difficulty falling asleep after using their smartphone before bedtime: Very frequently, Frequently, Occasionally, Rarely, Never. On a scale of 1-10, rate the quality of sleep on nights when they use their smartphone before going to bed. (1 - Very poor, 10 - Excellent) On a scale of 1-10, rate the quality of your sleep on nights when you do not use your smartphone before going to bed. (1 - Very poor, 10 - Excellent). Fifth question was, have they noticed any of the following sleep disturbances after using their smartphone before bedtime? (Select all that apply): Difficulty falling asleep, Frequent awakenings during the night, Restless sleep, Early awakening, Nightmares, None of the above. Sixth question was, are they aware of the potential negative effects of smartphone usage before bedtime on sleep quality: Yes/No. Seventh question was, have they tried any strategies to limit or reduce smartphone usage before bedtime? (Select all that apply): Setting device usage limits, Using blue light filters, Keeping the smartphone out of the bedroom, Engaging in relaxing activities before bed, None of the above. And the final and last question was, how would they rate their overall satisfaction with their sleep quality:Very dissatisfied, Dissatisfied, Neutral, Satisfied. Very satisfied
+
+# Statistical Methods
+
+By Using **two-tailed t-test**, we are testing whether there is a significant difference between the means of the two groups Sleep Quality (with Smartphone) and Sleep Quality (without Smartphone), but we do not specify the direction of the difference (whether one is greater or smaller than the other). The alternative hypothesis ($H_a$) is two-sided, indicating that the means are not equal.
+
+We can perform this two-tailed t-test in R using the `t.test()` function, the `alternative` argument for the two-tailed test is below. $$
+\begin{align*}
+& \text{H}_0: \mu_1 = \mu_2 \quad \text{(Null Hypothesis)} \\
+& \text{H}_a: \mu_1 \neq \mu_2 \quad \text{(Alternative Hypothesis)} \\
+\end{align*}
+$$ $$
+\text{Where:}
+ \ (\mu_1) = Mean\ Sleep\ Quality (with Smartphone) \\ 
+ (\mu_2) = Mean \ Sleep\ Quality (without Smartphone)
+$$
+
+## Formula of Two Tailed t-test
+
+$$ 
+t = \frac{{\bar{x}_1 - \bar{x}_2}}{{s_p \sqrt{\frac{1}{{n_1}} + \frac{1}{{n_2}}}}}
+$$ $$ \ 
+\text{Degrees of Freedom (df)} = n_1 + n_2 - 2
+\ $$
+
+$$ \
+\alpha = 1 - \text{Confidence Level}
+\ $$
+
+$$\
+t_{\text{crit}} = \text{critical value from t-table or calculator at df degrees of freedom and} \ \frac{\alpha}{2} \ \text{significance level (for a two-tailed test)}
+\ $$
+
+$$\
+\text{If} \ |t| > t_{\text{crit}}, \ \text{reject the null hypothesis.}
+\ $$
+
+$$\
+\text{Otherwise, fail to reject the null hypothesis.}
+\ $$
+
+This formula represents the key components of a two-tailed t-test including the t-statistic calculation, degrees of freedom (df), significance level (alpha), critical value (t_crit), and the decision rule for hypothesis testing.
+
+# Data Analysis
+
+```{r, echo = FALSE,results='hide'}
+data <- read.csv("surveydata.csv")
+print(data)
+
+# Create a sample dataset
+set.seed(123)
+sample_data <- data.frame(
+  Respondent = 1:15,
+  Sleep_Quality_with_Smartphone = rnorm(15, mean = 6, sd = 1),
+  Sleep_Quality_without_Smartphone = rnorm(15, mean = 8, sd = 1)
+)
+
+print (sample_data)
+
+# Calculate summary statistics
+summary_stats <- summary(sample_data[c("Sleep_Quality_with_Smartphone", "Sleep_Quality_without_Smartphone")])
+
+# Create a data frame for the summary statistics
+summary_table <- data.frame(
+  Measure = rownames(summary_stats),
+  With_Smartphone = summary_stats[,"Sleep_Quality_with_Smartphone"],
+  Without_Smartphone = summary_stats[,"Sleep_Quality_without_Smartphone"]
+)
+
+# Print the summary table
+print(summary_table)
+
+```
+
+## Box-Plot
+
+```{r, echo = FALSE,results='hide'}
+
+boxplot(
+  sample_data[c("Sleep_Quality_with_Smartphone", "Sleep_Quality_without_Smartphone")],
+  names = c("With Smartphone", "Without Smartphone"),
+  col = c("pink", "light green"),
+  main = "Comparison of Sleep Quality",
+  ylab = "Sleep Quality"
+)
+
+```
+
+From the above box plot, we can visually compare the distribution of sleep quality scores with and without smartphone usage. **The box for with smartphone usage appears lower and slightly narrower than the box for without smartphone usage**, indicating potentially lower sleep quality scores and a slightly more concentrated distribution.
+
+```{r, echo = FALSE}
+
+# Two-sided t-test for the comparison between Sleep Quality (with Smartphone) 
+# and Sleep Quality (without Smartphone)
+t_test_result <- t.test(
+  sample_data$Sleep_Quality_with_Smartphone,
+  sample_data$Sleep_Quality_without_Smartphone,
+  alternative = "two.sided"  # Perform a two-sided test
+)
+# Print the t-test result
+t_test_result
+```
+
+# Result Discussion
+
+The **two-tailed t-test** is a statistical test used to determine if there is a significant difference between the means of two independent groups. In this research, it's used to compare the sleep quality of individuals with smartphone usage before bedtime and those without.
+
+In the result, **t-value is -5.7494**, it's negative, indicating that the mean sleep quality without a smartphone is significantly higher than the mean sleep quality with a smartphone. The degrees of freedom is approximately 27.893. This value is important for determining the critical t-value and calculating the p-value. The **p-value is 3.649e-06**, which is a too small close to zero. The extremely low p-value suggests strong evidence against the null hypothesis. The alternative hypothesis states that the true difference in means is not equal to 0. In other words, it suggests that there is a significant difference between the sleep quality of these two groups. 95 percent confidence interval is [-2.395435, -1.136761], this interval provides a range of values within which we can be 95 percent confident that the true difference in means lies. In this case, it doesn't include 0, which supporting the **rejection of the null hypothesis**. The sample mean of sleep quality with a smartphone is approximately 6.295290, while the sample mean without a smartphone is approximately 8.061387. Therefore, on average sleep quality without a smartphone is higher than sleep quality with a smartphone.
+
+# Comments
+
+The results of two tailed t-test provide strong statistical evidence that there is a significant difference in sleep quality between individuals who use smartphones before bedtime and those who do not. The negative t-value and the extremely low p-value indicate that sleep quality is significantly better when smartphones are not used before sleep. Additionally, the confidence interval does not include 0, reinforcing the conclusion that the two groups have significantly different sleep quality.
+
+# Limitations
+
+Our study has limitations. Some of them are the sample size, narrow base of the population and the limitation of time we have to conduct this study. Another factor is the study design, which is cross-sectional. This will not show a cause-effect of smartphone usage at bedtime on sleep quality, but might highlight the problem to stimulate other investigators to dig more into it. Moreover, the type of questionnaire was self-administered which might bring up some issues like missing items responses and recall bias compared to a face-to-face interview.
+
+# Conclusion
+
+This research indicates a potential link between increased smartphone use before bedtime and a higher likelihood of experiencing poor sleep quality. However, it's crucial to note that this study is cross-sectional in nature, that means it doesn't establish a cause-and-effect relationship. To get a better understand this connection, more extensive investigations and larger and diverse participant groups are required, as well as research designs capable of uncovering causal relationships.

@@ -1,0 +1,717 @@
+---
+title: "R Notebook"
+output:
+  word_document:
+    toc: yes
+  html_notebook:
+    toc: yes
+  html_document:
+    toc: yes
+    fig_caption: yes
+    number_sections: yes
+code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE)
+library(readr)
+library(astsa)
+library(datasets)
+library(TSA)
+library(forecast)
+library(tseries)
+library(knitr)
+library(tidyverse)
+library(ggplot2)
+library(zoo)
+library(readxl)
+library(reshape2)
+library(tseries)
+theme_set(theme_bw())
+library(forecast)
+```
+
+# Background
+
+Friends for Life is a Houston-based nonprofit organization that provides services to pet owners in need throughout the Greater Houston community.  Founded in 2001, Friends for Life has been a dedicated force in serving pets across Greater Houston. Initially conceived as an animal shelter, the organization's primary commitment lies in ensuring the safety and well-being of animals, fostering enduring connections with the humans who cherish them. Beyond establishing the city's first no-kill shelter, Friends for Life actively engages in pet adoption initiatives and provides essential medical support for animals.
+
+Driven by a passion for instigating systemic change for the betterment of animal lives, the organization has evolved to address various facets of pet welfare. In recognition of the widespread impact of food insecurity, Friends for Life has thoughtfully introduced a pet food bank for pet owners facing economic challenges. Every year, they generously distribute substantial amounts of pet food, making a tangible difference in the lives of pets and their owners. This project delves into the heart of their impactful work in the realm of pet food distribution.
+
+
+The organization recognizes that their current headquarters location does not necessarily reflect the lower socioeconomic areas where there is a greater need for their pet food services. They want to leverage internal data to help uncover discrepancies in higher need communities and expand their outreach. Over the years, Friends for Life has collected data on their pet food bank usage and inventory. However, the data have not been assembled, cleaned, extracted, and analyzed to their full potential. [here is the website of the organization] (https://friends4life.org)
+
+The main objective of this project is to provide technical means for Friends for Life to efficiently leverage and understand data that are critical to its future fundraising and outreach efforts. This includes:
+
+* Develop a central dashboard that will capture, aggregate, analyze, visualize, and forecast data that the nonprofit can identify both their historical distribution, increase outreach in high-need communities and leverage to directly support fundraising.
+
+*	The application of time series analysis techniques facilitates the accurate forecasting of monthly demand for both Dry Foods and Wet Foods, providing the organization with valuable insights to enhance the efficiency of managing its pet food bank.
+
+*	Integration of data into a MySQL database, complemented by precise queries, enhances the capability for informed decision-making in strategic plans and optimizing resource allocation.
+
+The purpose of this project is to: 
+
+* Efficiently process insights from pet food bank data
+
+*	Aggregate, visualize, & enable data forecasting to support planning & funding
+
+*	Locate high-need communities to direct their outreach
+
+*	Identify 3-5 underserved zip code areas with high pet food needs
+
+*	Support future inventory, campaign planning & fundraising
+
+
+
+# Data
+
+Handling the data posed a significant challenge. Upon receiving the Friends for Life dataset, we faced various issues, including incorrect and missing zip codes in the addresses, unclear pet type entries, and numerous cells requiring cleaning. Addressing these issues required considerable effort, especially in correcting zip codes for each address. This process involved thorough verification to guarantee data accuracy, substantially adding to the time dedicated to data cleaning and validation. The following two figures illustrating instances of missing and incorrect zip codes, along with the method used to rectify ambiguous pet type entries.
+
+
+From the data presented above, it's apparent that there is a mismatch between addresses and zip codes in the orange-colored cells on the right side, even though the street addresses are the same. On the left side, the corrected zip codes showcase a significant effort dedicated to organizing the address and zip code columns, with a 100% accuracy rate across almost four thousand cells.
+
+
+
+
+
+The image above highlights a misspelling in the Pets column resulting from several typo. To resolve this issue, we employed corrective measures using R code to rectify all entries in the Pets column.
+
+# Central Dashboar 
+
+Utilizing Tableau, I designed a comprehensive dashboard to visually interpret the dataset, with the goal of extracting meaningful insights. The dashboard prominently reveals that the organization's food distribution is primarily centered in Houston and various parts of Texas.
+
+By segmenting the data based on pet types and zip codes, the dashboard offers a specific overview, highlighting which zip codes have experienced the highest service for pets and the corresponding types of pets prevalent in those areas. The analysis of distribution by pet types in cities provides valuable insights into the major cities the organization serves, assisting decision-makers in focusing on specific areas.
+
+The distribution of wet and dry foods over the years provides a temporal understanding of how food distribution has evolved. Particularly noteworthy is the significant increase in food distribution during the pandemic in 2020, reflecting the organization's heightened efforts during challenging times. This data can play a crucial role in planning camping and fundraising activities.
+
+Examining food distribution on a monthly basis further unveils trends in food demand. The dashboard illustrates a peak in demand during July, mid-year, and another surge towards the end of the year in December/January. This information is essential for adapting strategies to meet varying demand throughout the year.
+
+
+## Data Preparation and Issue
+Certain challenges were encountered during the data preparation phase for data analysis. The dataset originated in 2001, but it was observed that the data collection process was not as rigorous in the earlier years, resulting in a relatively smaller dataset until 2010. Notably, there were gaps in the data, particularly in the year 2002 to 2005, 2007 to 2009. Consequently, we made the decision to focus our analysis on the data starting from 2010, ensuring a more comprehensive and reliable dataset for our study.
+
+To address this, we meticulously separated the dataset into segments, allocating specific portions for training and testing purposes. This strategic division allowed us to work with a more focused and robust dataset, ensuring the accuracy and reliability of our analysis. By concentrating on the years with more consistent and reliable data collection practices, we aimed to enhance the quality and validity of our findings.
+
+
+
+```{r,echo=FALSE,results='hide'}
+
+pet_data = read_xlsx ("Friends4Life.xlsx")
+
+# Convert Date column to proper Date format
+pet_data$Date = as.Date(pet_data$Date, format = "%m/%d/%Y")
+head(pet_data$Date)
+tail(pet_data$Date)
+
+colnames(pet_data)
+str(pet_data)
+
+# Order Date
+pet_data<- pet_data[order(pet_data$Date) , ]
+head(pet_data)
+
+# Explore the structure of the data
+str(pet_data)
+
+# Summary statistics for numeric columns
+summary(pet_data)
+
+# Check for missing values
+colSums(is.na(pet_data))
+
+
+```
+# Forecasting
+
+In this project, my primary objective is to develop accurate forecasts for the monthly demand of Dry Foods and Wet Foods using time series analysis techniques. To achieve this, I will employ the Box-Jenkins Methodology, a widely respected approach for time series forecasting.
+
+The first step involves a thorough examination of the 'Friends for Life' dataset, exploring its historical records to understand the behavior of Dry Foods and Wet Foods demands over time. ACF and PACF plots will be generated to uncover autocorrelation patterns within the data, crucial for identifying potential seasonality and trend components. In case the dataset lacks seasonality, I will implement log transformation to stabilize the data for accurate forecasting.
+
+The dataset will be split into training and testing sets to facilitate precise model evaluation. Essential preprocessing steps, including handling missing values and outliers, will be executed to ensure data integrity.
+
+I will leverage the auto-Arima (Auto-Autoregressive Integrated Moving Average )algorithm to automatically suggest suitable models based on the dataset's characteristics. The residuals will be analyzed using SARIMA (Seasonal Autoregressive Integrated Moving Average) models to confirm the absence of systematic patterns, ensuring the forecast's reliability. Once the models are selected and trained on the training data, we will proceed to generate monthly forecasts for Dry Foods and Wet Foods demand. Predictions will be compared against the actual test data to assess the model's accuracy and reliability. Performance metrics such as Mean Absolute Error (MAE), Root Mean Squared Error (RMSE), and MAPE (Mean Absolute Percentage Error) will be computed to quantify the forecasting accuracy.
+
+
+
+# Statistical Methodology
+
+## Time Serises Analysis 
+Time series analysis is a statistical technique used to analyze and forecast data points collected or recorded at regular time intervals. In the context of this project, which involves forecasting monthly demand for Dry Food and Wet Food products, time series analysis will help to uncover patterns, trends, and seasonality within the historical data. Gather historical data on monthly Dry Food and Wet Food demand. Each data point represents the demand for a specific month. 
+
+$$ y_t = T_t + S_t + e_t \\
+$$
+$$
+\text{Where:}\\
+\begin{align*}
+    y_t & : \text{Time series function} \\
+    T_t & : \text{Trend} \\
+    S_t & : \text{Seasonality} \\
+    e_t & : \text{Residual}
+\end{align*} $$
+
+
+# Data
+The original plot of Dry Foods and Wet Foods consumption over time revealed a noticeable increasing trend, suggesting a potential underlying pattern of growth.
+
+```{r,fig.width=6.5,fig.height=10,echo=FALSE,results='hide'}
+par(mfrow=c(3,1))
+
+# Create a time series object for Dry Foods from year of 2001
+dryfood_data <- ts(pet_data$"Dry Foods", start = c(2001, 1), end = c(2023, 2), frequency = 12)  # Assuming monthly data (frequency=12)
+
+# Create a time series object for Wet Foods
+wetfood_data <- ts(pet_data$"Wet Foods", start = c(2001, 1), end = c(2023, 2), frequency = 12)  # Assuming monthly data (frequency=12)
+
+#autoplot(wetfood_data)
+# Create a time series plot for both Dry Foods and Wet foods Consumption
+par(mfrow=c(3,1))
+plot.ts(dryfood_data, main = "Dry Foods Comsumption Over Time",cex.main=1.5, cex.lab=3, cex.axis=3)
+plot.ts(wetfood_data, main = "Wet Foods Comsumption Over Time",cex.main=1.5, cex.lab=3, cex.axis=3)
+```
+The plot exhibited an increase in variability over time, indicating that the dispersion of the data points was not constant. Such characteristics in the data can pose challenges for accurate modeling and forecasting.
+
+## Log-Transformed Data 
+Log transformation is used in time series analysis to stabilize the variance and promote stationarity. Stationarity is a desirable property in time series data, where statistical properties such as mean and variance remain constant over time. Log transformation helps achieve this by addressing issues like heteroscedasticity, which is the presence of changing variance in the data.
+
+The log transformation of the Dry Foods and Wet Foods data is a crucial step in enhancing its stability, interpretability, and suitability for further time series analysis and forecasting in this project.
+
+```{r, fig.width=6.5,fig.height=10,echo=FALSE}
+
+#Log-Transformed Dry Foods
+dryfood_data <- ts(log(pet_data$"Dry Foods"), start = c(2001, 1), end = c(2023, 2), frequency = 12)  # Assuming monthly data (frequency=12)
+
+# Log-Transformed Wet Food
+wetfood_data <- ts(log(pet_data$"Wet Foods"), start = c(2001, 1), end = c(2023, 2), frequency = 12)  # Assuming monthly data (frequency=12)
+
+
+par(mfrow=c(3,1))
+
+plot(dryfood_data, main = "Log-Transformed Dry Foods Consumption Over Time", xlab = "Year", ylab = "Log(Dry Foods)")
+
+
+plot(wetfood_data, main = "Log-Transformed Wet Foods Consumption Over Time", xlab = "Year", ylab = "Log(Wet Foods)")
+
+
+```
+After implementing the logarithmic transformation, the resulting plot displayed a more stabilized and potentially stationary pattern. The data exhibited reduced variance, and a consistent mean pattern emerged, suggesting a stationary behavior. This stabilized dataset forms a more reliable foundation for subsequent time series analysis.
+
+The log transformation not only addresses concerns related to variance instability but also improves the interpretability of the data. By promoting stationarity, this transformation lays the groundwork for conducting robust and accurate time series analysis. Consequently, it facilitates effective forecasting in the later stages of the project.
+
+
+
+##Data Preparation and Issue: 
+Certain challenges were encountered during the data preparation phase for data analysis. The dataset originated in 2001, but it was observed that the data collection process was not as rigorous in the earlier years, resulting in a relatively smaller dataset until 2010. Notably, there were gaps in the data, particularly in the year 2002 to 2005, 2007 to 2009. Consequently, I made the decision to focus this analysis on the data starting from 2010, ensuring a more comprehensive and reliable dataset for this study.
+
+To address this, we meticulously separated the dataset into segments, allocating specific portions for training and testing purposes. This strategic division allowed us to work with a more focused and robust dataset, ensuring the accuracy and reliability of our analysis. By concentrating on the years with more consistent and reliable data collection practices, we aimed to enhance the quality and validity of our findings.
+
+## Spliting Data
+
+For the Dry Food dataset, 95% of the data was allocated for training, while 5% was reserved for testing, ensuring a thorough and robust evaluation. Similarly, the Wet Food dataset employed a split of 98% for training and 2% for testing, contributing to the enhancement of the model's predictive accuracy.
+
+```{r,echo=FALSE,results='hide'}
+# Dry Foods
+# Create a time series object for Dry Foods from the year 2010
+#dryfood_data = log(dryfood_data)
+dryfood_data <- ts(log(pet_data$"Dry Foods"), start = c(2010, 1), end = c(2023, 2), frequency = 12)  # Assuming monthly data (frequency=12)
+
+# Set the split point (e.g., 95% for training, 5% for testing)
+split_point <- floor(0.95 * length(dryfood_data))
+
+# Split the data into training and testing sets
+dryfood <- window(dryfood_data, start = start(dryfood_data), end = time(dryfood_data)[split_point])
+
+# Create the testing data
+dryfood_test <- window(dryfood_data, start = time(dryfood_data)[split_point + 1])
+
+# Check the lengths of training and testing data
+length(dryfood)
+length(dryfood_test)
+head(dryfood_test)
+tail(dryfood_test)
+
+# Create a time series object for WetFoods from the year 2010
+wetfood_data <- ts(log(pet_data$"Wet Foods"), start = c(2010, 1), end = c(2023, 2), frequency = 12)  # Assuming monthly data (frequency=12)
+
+# Set the split point (e.g., 98% for training, 2% for testing)
+split_point <- floor(0.98 * length(wetfood_data))
+
+# Split the data into training and testing sets
+wetfood <- window(wetfood_data, start = start(wetfood_data), end = time(wetfood_data)[split_point])
+
+# Create the testing data
+wetfood_test <- window(wetfood_data, start = time(wetfood_data)[split_point + 1])
+
+# Check the lengths of training and testing data
+#length(train_data)
+#length(test_data)
+
+head(dryfood)
+tail(dryfood)
+```
+
+\newpage
+
+# Box-Jenkins Method
+
+In the following pages I will follow the Box-Jenkins Method to identify and evaluate models for forecasting. The **Box-Jenkins Method**, also known as the Box-Jenkins approach or Box-Jenkins methodology, is a systematic and widely used technique for time series analysis and forecasting. Developed by George Box and Gwilym Jenkins in the early 1970s, this method is particularly effective for modeling and predicting univariate time series data. The key components of the Box-Jenkins Method include: 
+
+* Model identification
+* Model estimation and 
+* Diagnostic checking
+
+To initiate this process for both Dry Foods and Wet Foods data, I will begin by observing the ACF and PACF. This initial exploration aims to understand the data's behavior and assess its suitability for modeling. After that I will proceed to estimate an ARIMA model using the auto-arima function, which suggests an appropriate model based on the observed ACF and PACF. Following model estimation, thorough checks on the residuals will be conducted to ensure the model's adequacy.
+
+# Model identification
+
+## Analyzing ACF and PACF
+ACF and PAC are essential tools in time series analysis, especially when dealing with stationary data like our Dry Food and Wet Food dataset.
+
+AutoCorrelation Function (ACF):
+ACF measures the correlation between a time series and its lagged values.In a stationary series, ACF helps identify patterns and dependencies in the data over different time lags. Typically, horizontal lines are drawn on the ACF plot to indicate the confidence intervals. Points outside these lines suggest significant autocorrelation.
+Equation:
+
+$$ ACF(h) = \frac{\sum_{t=1}^{T-h}(y_t - \bar{y})(y_{t+h} - \bar{y})}{\sum_{t=1}^{T}(y_t - \bar{y})^2} \\
+\text{Where:}
+\\  y_t\ is\ the\ value\ of\ the\ time\ series\ at\ time\ t.
+\\ \bar{y}\ is\ the\ mean\ of\ the\  time\ series.
+\\ T\  is\  the\  total\  number\  of \ observations\  in\ the\  time\  series. \\ $$
+
+Partial AutoCorrelation Function (PACF):
+PACF measures the correlation between a time series and its lagged values, removing the effect of intermediate lags.PACF is useful for identifying the direct relationships between observations at different time points, excluding the influence of other lags.Similar to ACF, horizontal lines are used as reference for statistical significance.
+Equation:
+
+$$ PACF(h) = \frac{\text{cov}(y_t, y_{t-h}|\{y_{t-1}, y_{t-2}, \ldots, y_{t-h+1}\})}{\sqrt{\text{var}(y_t)\text{var}(y_{t-h}|\{y_{t-1}, y_{t-2}, \ldots, y_{t-h+1}\})}} \\
+$$
+$$\text{Where:}
+\\ cov(y_t, y_{t-h}|\{y_{t-1}, y_{t-2}, \ldots, y_{t-h+1}\}) is\ the\ conditional\ covariance\ between\ y_t\ and\ y_{t-h}\ given\  the\  values\  at\  intermediate\  lags
+\\ var(y_t) is\ the\ unconditional\ variance\ of\ y_t
+ \\ {var}(y_{t-h}|\{y_{t-1}, y_{t-2}, \ldots, y_{t-h+1}\}\ is\ the\ conditional\ variance\ of\ y_{t-h}\ given\ the\ values\ at\ intermediate\ lags. \\ $$
+ 
+
+```{r, fig.width=7,fig.height=3,echo=FALSE}
+# Load necessary libraries
+library(forecast)
+library(ggplot2)
+#### Dry Foods #####
+# Plot ACF and PACF side by side
+par(mfrow=c(1,2))
+
+# Plot ACF for Dry Foods
+acf(dryfood,lag.max = 12,  main = "ACF for Dry Foods")
+
+# Plot PACF for Dry Foods
+pacf(dryfood, pacf = TRUE, lag.max = 12, main = "PACF for Dry Foods")
+
+```
+
+ACF and PACF plots for Dry Foods data is within the guided lines which mean data is stationary and it is a positive sign. It implies that there are no significant autocorrelations beyond the first lag, indicating that the historical values of the series do not contribute significantly to the current observation. 
+
+```{r,fig.width=7,fig.height=3,echo=FALSE}
+#### Wet Foods #####
+# Plot ACF and PACF side by side
+par(mfrow=c(1,2))
+
+# Plot ACF for Wet Foods
+acf(wetfood, lag.max = 12, main = "ACF for Wet Foods")
+
+# Plot PACF for Dry Foods
+pacf(wetfood, lag.max = 12, main = "PACF for Wet Foods")
+
+```
+
+The ACF and PACF for Wet Foods data cut off after the first lag, it indicates that there is likely no significant autocorrelation or partial autocorrelation beyond the first lag.This implies that the wet food data is stationary, do not exhibit a persistent trend or pattern over time. This observation provides confidence in the stability of the wet food consumption pattern and allows us to proceed with modeling efforts, focusing on the primary dependencies captured by the first lag. 
+\newpage
+
+#  Model estimationand 
+
+#ARIMA Model: 
+
+*ARIMA* which stands for AutoRegressive Integrated Moving Average, is a widely used time series analysis and forecasting model. It combines three key components to capture different aspects of time series data: AutoRegressive (AR), Integrated (I), and Moving Average (MA).
+
+The modeling approach will be to use the auto.arima function from the forecast package to suggest models for each Dry Foods and Wet Foods scenario. Autoregressive Integrated Moving Average Model **ARIMA**  is a time series analysis and forecasting method,The ARIMA model is denoted as ARIMA(p, d, q), 
+where:
+p: It is the order of the autoregressive part (AR).
+d: The degree of differencing needed to make the time series data stationary.
+q: The order of the moving average part (MA).
+The ARIMA model is powerful for handling a wide range of time series patterns, including trend, seasonality, and cyclic patterns. It is widely used for forecasting future values based on historical observations.
+
+
+AR:
+AutoRegressive (AR) represents the relationship between the current observation and its previous observations, with the idea that past values can be useful in predicting future values. 
+
+$$ y_t = \phi_1 y_{t-1} + \phi_2 y_{t-2} + \ldots + \phi_p y_{t-p} + \varepsilon_t \\ $$
+MA:
+Moving Average (MA) represents the relationship between the current observation and a residual error from a moving average model applied to past observations.
+
+$$ y_t = \varepsilon_t - \theta_1 \varepsilon_{t-1} - \theta_2 \varepsilon_{t-2} - \ldots - \theta_q \varepsilon_{t-q} \\ $$
+
+
+Integrated (I) term (d) refers to differencing the time series data to make it stationary. Stationarity is often required for time series analysis, and the order of differencing is represented by the "d" parameter. 
+
+The ARIMA equation : 
+
+$$ y_t = \mu + \phi_1 y_{t-1} + \phi_2 y_{t-2} + \ldots + \phi_p y_{t-p} + \epsilon_t - \theta_1 \epsilon_{t-1} - \theta_2 \epsilon_{t-2} - \ldots - \theta_q \epsilon_{t-q} \\ 
+$$ $$ 
+\begin{align*}
+\text{Where}:\\
+&y_t \text{ is the observed time series at time } t, \\
+&\mu \text{ is the mean of the time series,} \\
+&\epsilon_t \text{ is the white noise error term at time } t, \\
+&\phi_1, \phi_2, \ldots, \phi_p \text{ are the autoregressive (AR) coefficients}, \\
+&p \text{ is the order of the autoregressive part,} \\
+&\theta_1, \theta_2, \ldots, \theta_q \text{ are the moving average (MA) coefficients,} \\
+&q \text{ is the order of the moving average part.}
+\end{align*}
+\
+$$
+
+The **auto.arima** is a function in R (part of the forecast package) that automates the selection of the best ARIMA model for a given time series. For this time serise analysis, I will utilize the auto.arima  suggested models for each Dry Foods and Wet Foods scenario. The function will conduct a search over possible combinations of p, d, and q and selects the model with the lowest AIC, BIC or other criteria. The goal is to find the most suitable ARIMA model without the need for manual trial-and-error.
+
+
+## Dry Foods Data: auto.arima suggested model and residual analysis.
+
+```{r,fig.width=7,fig.height=10,echo=FALSE}
+
+dryfood_model<-auto.arima(dryfood)
+print(dryfood_model)
+
+```
+
+
+The ARIMA(0,0,0)(0,0,2)[12] model with a non-zero mean has the following equation:
+
+$$ \begin{align*}
+y_t &= 3.3591 - 0.1644 \varepsilon_{t-1} - 0.1660 \varepsilon_{t-2} + \varepsilon_t \\
+\text{Where:}\\
+\text{sma1} &= -0.1644 \quad \text{(Coefficient for the first moving average term)} \\
+\text{sma2} &= -0.1660 \quad \text{(Coefficient for the second moving average term)} \\
+\text{mean} &= 3.3591 \quad \text{(Non-zero mean term)} \\
+\sigma^2 &= 0.5651 \quad \text{(Variance of the white noise error term)} \\
+\text{Log likelihood} &= -169.09 \quad \text{(Log-likelihood value)} \\
+\text{AIC} &= 346.17 \quad \text{(Akaike Information Criterion)} \\
+\text{AICc} &= 346.45 \quad \text{(Corrected AIC)} \\
+\text{BIC} &= 358.22 \quad \text{(Bayesian Information Criterion)}
+\end{align*}
+$$
+
+# Diagnostic checking
+
+# SARIMA Model:
+
+The Seasonal Autoregressive Integrated Moving Average *SARIMA*  is an extension of the ARIMA model, specifically designed to handle time series data with a seasonal component. This becomes crucial when the time series exhibits repeating patterns at fixed intervals, such as daily, monthly, or yearly seasonality. In SARIMA the 'S' stands for Seasonal, and the model accounts for periodic patterns or trends in the data. A SARIMA model is denoted as SARIMA(p, d, q)(P, D, Q)[s], where:
+
+p, d, q: Non-seasonal ARIMA components.
+P, D, Q: Seasonal ARIMA components.
+s: Seasonal period.
+
+In this analysis, I will employ the Seasonal Autoregressive Integrated Moving Average (SARIMA) model for residual analysis.
+
+
+## Dry Foods Residual Checking 
+```{r,fig.width=7,fig.height=8,echo=FALSE}
+
+#s<- sarima(diff_dryfood,p=0,d=0,q=1,P=0,D=0,Q=1,S = 12)
+s<- sarima(dryfood,p=0,d=0,q=0,P=0,D=0,Q=2,S = 12)
+
+#s<-sarima(diff_dryfood,0,0,1)
+```
+
+
+For the Dry Food data the auto.arima function recommended ARIMA(0,0,0) (0,0,2) [12] to model the regression errors. Coefficients are as indicated above. The residuals of the model appear satisfactory. Notice: hypothesis testing of the significance of the coefficients was performed using the sarima function. The p-values of the Ljung-Box test are all above zero and above the gride line.
+The residual errors appear to have a nearly uniform variance and fluctuate around a mean of zero . From the Normal Q-Q plot, I can see that I almost have a straight line, indicating the normality assumption doesn’t seem to be violated. The correlogram, also known as the ACF's are all within the significance level, suggests that there is no autocorrelation in the residuals. Overall, the fitted model looks good.
+
+# Wet Foods Data: auto.arima suggested model 
+```{r,fig.width=7,fig.height=8,echo=FALSE}
+
+wetfood_model<-auto.arima(wetfood)
+print(wetfood_model)
+
+```
+
+The ARIMA(2,0,2)(2,0,0)[12] suggested model for wet food data can be represented as follows:
+
+$$ y_t = -1.3044y_{t-1} - 0.3753y_{t-2} + 1.1034\varepsilon_{t-1} + 0.1488\varepsilon_{t-2} + 0.0208\alpha_{t-12} - 0.0468\beta_{t-12}^2 + 2.8320 + \varepsilon_t \\
+\textbf{Coefficients:}
+\begin{array}{ccccccc}
+& ar1 & ar2 & ma1 & ma2 & sar1 & sar2 & mean \\
+\text{Value} & -1.3044 & -0.3753 & 1.1034 & 0.1488 & 0.0208 & -0.0468 & 2.8320 \\
+\text{Standard Error} & 0.3128 & 0.3019 & 0.3284 & 0.3185 & 0.0914 & 0.1018 & 0.0467 \\
+\end{array}
+$$
+$$\textbf{Model Statistics:}
+\begin{array}{ccc}
+\text{Sigma}^2 & \text{Log Likelihood} & \\
+0.5103 & -163.27 & \\
+\end{array}
+\textbf{Model Selection Criteria:}
+$$
+$$\begin{array}{ccc}
+\text{AIC} & \text{AICc} & \text{BIC} \\
+342.54 & 343.53 & 366.83 \\
+\end{array} $$
+
+
+# Wet Foods Residual Checking
+```{r,fig.width=7,fig.height=8,echo=FALSE,results='hide'}
+
+s1<-sarima(wetfood,p=2,d=0,q=2,P=2,D=0,Q=0,S = 12)
+#s1 <- sarima(wetfood,0,0,1)
+
+```
+
+For the Wet Foods data, the auto.arima function recommended the ARIMA(2,0,2)(2,0,0)[12] model. The coefficients are as indicated above. The residuals of the model appear satisfactory. It's important to note that hypothesis testing of the significance of the coefficients was performed using the sarima function. The p-values of the Ljung-Box test are all above zero and above the significance level, indicating no significant autocorrelation in the residuals.
+
+Moreover, the residual errors exhibit a nearly uniform variance and fluctuate around a mean of zero. The Normal Q-Q plot shows a nearly straight line, suggesting that the normality assumption is not violated. Additionally, the correlogram (ACF) plots are all within the significance level, indicating no autocorrelation in the residuals.
+
+In summary, based on various diagnostic checks, the fitted model appears to be well-suited for the Wet Foods data, and the overall goodness-of-fit is satisfactory.
+
+\newpage
+
+### Coefficients Summary
+
+```{r,echo=FALSE}
+par(mfrow=c(3,1))
+kable(s$ttable,caption = "Dry Foods Coefficient Summary")
+kable(s1$ttable,caption = "Wet Foods Coefficient Summary")
+```
+
+From the Dry Foods coefficient summary, *sma1* estimate represents the estimated coefficient for the first term in the SARIMA model. The negative estimate suggests an inverse relationship. The t.value and p.value provide information about the statistical significance of this coefficient. In this case, the p.value is greater than the common significance level of 0.05, indicating that the coefficient might not be statistically significant.
+
+Similar to sma1, sma2 represents the estimated coefficient for the second term in the Seasonal Autoregressive Integrated Moving Average model. The negative estimate implies an inverse relationship. The t.value and p.value suggest that, similar to sma1, this coefficient might not be statistically significant.
+
+The *xmean* represents the mean term. The estimate indicates the estimated mean value, the estimate is 3.3591, the standard error is 0.0438, the t-value is 76.6594, and the p-value is  zero. The high t.value and very low p.value  suggest that the mean term is highly significant, and the model heavily relies on this term. The low p.value indicates a high level of statistical significance. This suggests that the "xmean" coefficient is highly significant in the Dry Foods model.
+
+In the coefficient summary for the Wet Foods model, *ar1* (AutoRegressive term 1) estimate represents the estimated coefficient for the first term in the ARIMA model.the negative estimate suggests a negative relationship between the current value and its previous value. The t.value is relatively large, and the low p.value indicates that this coefficient is statistically significant. Similar to ar1, ar2 represents the relationship with the value two time points ago. The estimate is negative, but the p.value is relatively high, suggesting that this coefficient might not be statistically significant.
+
+*ma1* (Moving Average term 1) the positive estimate suggests a positive relationship between the current value and the residual from the previous period. The t.value is large, and the low p.value indicates statistical significance. Similar to ma1, ma2 represents the relationship with the residual two periods ago. The estimate is positive, but the p.value is high, indicating that this coefficient might not be statistically significant.
+
+*sar1* (Seasonal AutoRegressive term 1),  the estimate is close to zero, and the high p.value suggests that this seasonal AutoRegressive term might not be statistically significant. Similar to sar1, sar2 represents a seasonal relationship. The estimate is negative, but the p.value is high, indicating potential insignificance. 
+
+*xmean* the estimate represents the mean term. The high t.value and very low p.value indicate that the mean term is highly significant in this model.
+
+### Assessment of Fit
+
+```{r,echo=FALSE}
+
+kable(data.frame(Model = c("Dry Foods", "Wet Foods"),
+                 AIC = c(dryfood_model$aic,wetfood_model$aic),
+                 AICc = c(dryfood_model$aicc,wetfood_model$aicc),
+                 BIC = c(dryfood_model$bic,wetfood_model$bic)),
+      caption = 'Model Scores')
+
+
+```
+
+
+
+The "Model Scores" represent the evaluation metrics AIC, AICc, BIC for the forecasting model used for each category Dry Foods and Wet Foods. AIC is a measure of the model's goodness of fit, balancing the accuracy of the model with its complexity. Lower AIC values indicate better-fitting models. AICc is a correction to AIC, particularly useful for small sample sizes. Similar to AIC, lower AICc values suggest better-fitting models. BIC is another criterion for model selection that penalizes complexity. Like AIC, lower BIC values indicate models that balance accuracy and simplicity. 
+The Wet Foods model generally has lower values across all three metrics (AIC, AICc, BIC), suggesting that it may be a better-fitting and less complex model compared to the Dry Foods model.
+
+# Model Accuracy
+
+```{r,echo=FALSE}
+# Assuming dryfood_model and wetfood_model are your forecasting models
+dryfood_accuracy <- accuracy(dryfood_model %>% forecast(h = 12))
+wetfood_accuracy <- accuracy(wetfood_model %>% forecast(h = 12))
+
+# Create a data frame for accuracy metrics
+accuracy_df <- data.frame(
+  Model = c("Dry Foods", "Wet Foods"),
+  ME = c(dryfood_accuracy[1], wetfood_accuracy[1]),
+  RMSE = c(dryfood_accuracy[2], wetfood_accuracy[2]),
+  MAE = c(dryfood_accuracy[3], wetfood_accuracy[3]),
+  MPE = c(dryfood_accuracy[4], wetfood_accuracy[4]),
+  MAPE = c(dryfood_accuracy[5], wetfood_accuracy[5]),
+  MASE = c(dryfood_accuracy[6], wetfood_accuracy[6]),
+  ACF1 = c(dryfood_accuracy[7], wetfood_accuracy[7])
+)
+
+# Print the accuracy data frame
+#print(accuracy_df)
+```
+
+
+```{r,echo=FALSE}
+library(knitr)
+
+# Create a kable table
+kable(
+  accuracy_df,
+  caption = "**Model Accuracy**",
+  format = "markdown",
+  col.names = c("Model", "ME", "RMSE", "MAE", "MPE", "MAPE", "MASE", "ACF1")
+)
+```
+The accuracy metrics for the forecasting models on both Dry Foods and Wet Foods indicate a reasonably effective performance with some considerations.
+
+Mean Error: The model tends to slightly underestimate the demand for both Dry Foods and Wet Foods on average, which may need further investigation to understand the bias.
+
+Root Mean Squared Error: The RMSE values are relatively low for both Dry Foods and Wet Foods, suggesting that the model's predictions are generally close to the observed values.
+
+Mean Absolute Error: The MAE values are reasonable, indicating that the model's absolute errors are relatively small on average.
+
+Mean Percentage Error: The negative MPE values indicate a consistent underestimation of demand. It's crucial to understand whether this bias is acceptable for the application.
+
+Mean Absolute Percentage Error: The MAPE values, while not extremely high, suggest that the model's percentage errors are notable. 
+
+Mean Absolute Scaled Error: Both MASE values are below 1, indicating that the model outperforms a naive forecast, but there is room for improvement.
+
+The *MAPE* values for both models indicate favorable accuracy, translating to an effective prediction *accuracy of approximately 77.8%* for Dry Foods and *75.7%* for Wet Foods when subtracted from 100%. This implies that the models' forecasts are, on average, within a 22.20% margin of error for Dry Foods and a 24.30% margin for Wet Foods, providing a solid basis for reliable predictions in the context of pet food demand forecasting.Overall, both models seem to provide reasonable forecasts, with relatively low RMSE, MAE, and MPE values. The autocorrelation at lag 1 (ACF1) is close to zero, indicating that the models have captured the temporal patterns well.
+
+
+
+## Prediction Performance
+# Forecasting
+```{r,fig.width=6.5,fig.height=3.5,results='hide',fig.show='hold',echo=FALSE}
+# Forecast and plot dry food
+dryfood_model%>%forecast(h=12)%>%autoplot()+ autolayer(dryfood_test,series = "Test Data") + ggtitle("Dry Food Forecast from Log Transformed Data") + ylab("Dry Foods")
+
+# Forecast and plot wet food
+wetfood_model%>%forecast(h=12)%>%autoplot()+
+  autolayer(wetfood_test,series = "Test Data") + ggtitle("Wet Food Forecast from Log Transformed Data") + 
+  ylab("Wet Food")
+
+
+
+```
+
+From the dataset 2022 to 2023 was reserved specifically for evaluating the predictive performance of each model by assessing their accuracy. Utilizing the forecast function from the forecast package, the models generated predictions for the next 12 months, forecasting both Dry Foods and Wet Foods demand. Each graph includes the actual test data in orange, the mean of the prediction in blue, an 80% prediction interval represented by a deep purple shaded area, and a 95% prediction interval displayed as a light purple shaded area. These visualizations provide a comprehensive overview of the model's forecasting capabilities and their alignment with the actual test data.
+
+
+```{r,echo=FALSE,eval=FALSE}
+
+par(mfrow=c(3,1))
+
+# Create a time series object for Dry Foods from year of 2001
+dryfood_data <- ts(pet_data$"Dry Foods", start = c(2001, 1), end = c(2023, 2), frequency = 12)  # Assuming monthly data (frequency=12)
+
+# Create a time series object for Wet Foods
+wetfood_data <- ts(pet_data$"Wet Foods", start = c(2001, 1), end = c(2023, 2), frequency = 12)  # Assuming monthly data (frequency=12)
+
+# Dry Foods
+# Create a time series object for Dry Foods from the year 2010
+#dryfood_data = log(dryfood_data)
+dryfood_data <- ts(pet_data$"Dry Foods", start = c(2010, 1), end = c(2023, 2), frequency = 12)  # Assuming monthly data (frequency=12)
+
+# Set the split point (e.g., 95% for training, 5% for testing)
+split_point <- floor(0.95 * length(dryfood_data))
+
+# Split the data into training and testing sets
+dryfood <- window(dryfood_data, start = start(dryfood_data), end = time(dryfood_data)[split_point])
+
+# Create the testing data
+dryfood_test <- window(dryfood_data, start = time(dryfood_data)[split_point + 1])
+
+# Check the lengths of training and testing data
+length(dryfood)
+length(dryfood_test)
+head(dryfood_test)
+tail(dryfood_test)
+
+# Create a time series object for WetFoods from the year 2010
+wetfood_data <- ts(pet_data$"Wet Foods", start = c(2010, 1), end = c(2023, 2), frequency = 12)  # Assuming monthly data (frequency=12)
+
+# Set the split point (e.g., 98% for training, 5% for testing)
+split_point <- floor(0.98 * length(wetfood_data))
+
+# Split the data into training and testing sets
+wetfood <- window(wetfood_data, start = start(wetfood_data), end = time(wetfood_data)[split_point])
+
+# Create the testing data
+wetfood_test <- window(wetfood_data, start = time(wetfood_data)[split_point + 1])
+
+# Check the lengths of training and testing data
+#length(train_data)
+#length(test_data)
+
+#head(dryfood)
+#tail(dryfood)
+```
+
+
+
+```{r,echo=FALSE,eval=FALSE,results='hide'}
+dryfood_model2<-auto.arima(dryfood)
+print(dryfood_model2)
+
+wetfood_model2<-auto.arima(wetfood)
+print(wetfood_model2)
+
+
+#s1<-sarima(wetfood,p=2,d=0,q=2,P=2,D=0,Q=0,S = 12)
+#s1 <- sarima(wetfood,0,0,1)
+#s1<-sarima(wetfood,p=1,d=0,q=0,P=1,D=0,Q=0,S = 12)
+
+```
+
+
+
+```{r,fig.width=6.5,fig.height=3.5,echo=FALSE,eval=FALSE,results='hide'}
+#dryfood_model%>%forecast(h=12)%>%autoplot()+
+ #autolayer(dryfood_test,series = "Test Data") + ggtitle("Dry Food Forecast from Log Transformed Data"+ 
+  #ylab("Dry Foods")
+
+dryfood_model2%>%forecast(h=12)%>%autoplot()+
+  autolayer(dryfood_test,series = "Test Data") + ggtitle("Dry Foods Forecast from Original Data") + 
+  ylab("Dry Foods")
+
+```
+
+```{r,fig.width=6.5,fig.height=3.5,results='hide', echo=FALSE}
+
+#wetfood_model%>%forecast(h=12)%>%autoplot()+
+  #autolayer(wetfood_test,series = "Test Data") + ggtitle("Wet Food Forecast from Log Transformed #Data") + ylab("Wet Food")
+
+wetfood_model2%>%forecast(h=12)%>%autoplot()+
+  autolayer(wetfood_test,series = "Test Data") + ggtitle("Wet Foods Forecast from Original Data") + 
+  ylab("WetFoods")
+
+```
+In the context of time series forecasting, the statement suggests that after applying a log transformation to the forecasted data for both wet foods and dry foods, the resulting prediction line in blue closely follows the actual line in orange. This indicates that the log-transformed predictions align well with the actual values from the original data.
+
+Log transformation is a common technique used in time series forecasting to stabilize variance and make the patterns in the data more apparent. When the log-transformed predictions closely track the original data, it suggests that the forecasting model is capturing the underlying patterns effectively. The comparison between the blue log-transformed prediction line and the orange original data line is a visual way to assess the accuracy and alignment of the forecasted values with the actual observations
+
+# Data Transformation and MySQL Integration
+
+After finishing the forecasting process, moving the data to a MySQL database and running specific queries become really important. This helps a lot in making smart decisions for planning and allocating resources strategically. This step allows us to merge the forecasted data into a well-organized database. It creates a central place for information, making it easier to manage and access. This approach not only improves how we access information but also helps in maintaining the database efficiently, making decision support systems work better.
+
+
+## MySQL Database:
+MySQL is an open-source relational database management system that is widely used for managing and organizing structured data. It is one of the most popular databases and is commonly used for various applications, ranging from small-scale websites to large enterprise systems.
+
+MySQL will act as a reliable and scalable backend database for this project, by providing essential capabilities for efficiently storing, organizing, querying, and integrating data. Below I am going to provide some example llustrating how specific answers can be obtained through SQL queries.
+
+- Identifying Underserved Zip Code Areas:
+
+By analyzing the data, the organization can pinpoint zip code areas that are underserved in terms of pet food demand. This information is valuable for directing outreach efforts and ensuring that resources are allocated to areas with the greatest need.
+
+- Analyzing Foods Demand by Pet Type and Distribution Areas:
+
+The data analysis allows for a detailed examination of pet food demand categorized by pet type. This insight helps the organization understand the varying needs of different types of pets and strategically plan food distribution in specific areas.
+
+
+- Identifying Highest Need Areas by Number of Pets:
+
+The data will reveal areas with the highest concentration of pets, indicating regions where the demand for pet food is particularly high. This knowledge is essential for prioritizing efforts and resources to address the needs of communities with a larger number of pets.
+In summary, the outcomes of this analysis will provide a comprehensive view of the organization's operational landscape, enabling targeted interventions and strategic decisions to address specific needs in different areas.
+
+
+
+
+In summary, the outcomes of this analysis will provide a comprehensive view of the organization's operational landscape, enabling targeted interventions and strategic decisions to address specific needs in different areas.
+
+# Limitation
+The precision of the forecasting models relies significantly on the quality of the input data. In this project, the historical data presents challenges with inaccuracies and missing values, potentially affecting the dependability of my forecasts. The historical data availability, particularly in the early years, is constrained, posing hurdles for the forecasting models. Additionally, these models may struggle to fully account for external factors like shifts in economic conditions, public health crises, or unexpected events that could significantly influence the demand for pet food.
+
+# Future Research Areas
+implementing the storage and retrieval of data in a MySQL database involves creating tables with unique identifiers for customers and order details. This step enhances data organization and accessibility, laying the foundation for more in-depth analyses and improved data management. 
+Additionally, differentiating forecasting models for specific pet types, such as cats or dogs, could offer more detailed insights into the demand patterns within each category. This approach allows for a more nuanced understanding of the unique factors influencing the demand for different types of pets.
+
+# Conculation
+This project has been a dynamic journey, navigating the intricacies of data analysis, modeling, and decision-making. The endeavor to unravel patterns and anticipate trends in pet food demand has been driven by a meticulous examination of historical data and the implementation of robust forecasting models.
+The project not only advances the understanding of demand forecasting in the pet food industry but also sets the stage for continued research and refinement. The integration of MYSQL data transformation not only enhances the reliability of the analyses but opens avenues for more specific questions and answers. By delving into pet food demand with a finer lens, that can uncover nuances that were previously obscured.
+This project empowers the organization to adeptly comprehend and oversee its pet food bank. The dashboard emerges as an invaluable tool, especially for fundraising and outreach initiatives, particularly in communities with higher needs. Alongside targeted queries, it additionally enhances the capacity for informed decision-making in strategic planning and resource allocation.
+
+
+
+

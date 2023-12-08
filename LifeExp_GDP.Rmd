@@ -1,0 +1,905 @@
+---
+title: "Analyzing the Relationship Between Life Expectancy and GDP per Capita"
+author: "Shamima Haque"
+date: "2023-10-18"
+output:
+  html_document: default
+  word_document: default
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+#Introduction/Background
+
+In the realm of data analytics, understanding the intricate dynamics
+between life expectancy and Gross Domestic Product (GDP) per capita
+stands as a pivotal endeavor. Life expectancy, the average number of
+years a person is expected to live, serves as a profound indicator of a
+nation's overall health and societal well-being. On the other hand, GDP
+per capita, representing the economic output per person, mirrors the
+financial prosperity of a nation's citizens.
+
+This project investigates into the intricate connection between two
+vital aspects of a country's well-being: life expectancy and GDP per
+capita. Inspired by the impactful Gapminder project, co-founded by the
+esteemed Hans Rosling, a leading figure in statistics and public health,
+this venture leverages the extensive and globally diverse Gapminder
+dataset. Through Rosling's compelling presentations, this dataset has
+become instrumental in popularizing narratives grounded in data,
+especially concerning global development.
+
+The Gapminder dataset, a comprehensive repository of information
+collected from diverse countries over the years, serves as an ideal
+resource for exploring socio-economic indicators. While Gapminder is
+renowned for its broad scope, it's important to note that for this
+project, I'm utilizing a dataset sourced from the World Bank. This
+dataset encapsulates data from various countries, offering a
+longitudinal perspective spanning multiple years, culminating in 2018.
+
+In delving into the intricate factors influencing life expectancy, such
+as happiness, pollution, terrorism, and diseases, my primary focus has
+been on a specific aspect: the correlation between life expectancy and
+the GDP per capita of each country. The results underscore a notable
+trend -- countries with a higher GDP per capita generally exhibit a
+superior life expectancy for their citizens, surpassing outcomes
+observed in countries with a lower GDP per capita.
+
+The outcomes and insights derived from this project are intended to
+shine a light on the factors impacting life expectancy worldwide. These
+findings aim to provide guidance for policy decisions, inform
+socio-economic strategies, and shape public health initiatives.
+Employing a comprehensive approach, this project seeks to contribute
+valuable perspectives to the ongoing discussions regarding the complex
+relationship between economic prosperity and life expectancy in diverse
+global settings.
+
+# Problem Statement
+
+The primary goal of this project is to unravel how life expectancy
+correlates with the economic prosperity of nations. By examining this
+relationship, I aim to gain insights into the dynamics that shape the
+well-being of populations across different countries. Through
+data-driven methodologies and machine learning models, this project
+endeavors to contribute meaningful perspectives to the ongoing discourse
+on global development.
+
+#Data collection and pre-processing
+
+In this project datasets sourced from the World Bank for the analysis.
+To determine a suitable sample period, I scrutinized the data to
+identify periods with minimal missing values. Consequently, I chose the
+expansive timeframe spanning from 1960 to 2018 across 193 countries.
+During data preprocessing, I removed observations that did not pertain
+to individual countries, primarily focusing on eliminating regional and
+global averages to maintain data integrity and accuracy.
+
+The initial step in analyzing the collected dataset involved meticulous
+pre-processing. Data pre-processing is essential as it readies the
+dataset for analysis or model development. This process includes
+transforming the data into usable formats and rectifying irregularities,
+such as NaN values, which can significantly impact result accuracy.
+
+The dataset extracted for this study was in the desired CSV format.
+However, it did contain missing or unidentified values. Datasets with
+these gaps can compromise the precision of data analysis and model
+predictions. Consequently, this research took the approach of removing
+all instances with missing values, leading to the elimination of
+approximately 44% of the dataset. Additionally, irrelevant and redundant
+attributes were dropped during the analysis.
+
+```{r}
+
+install.packages("ggplot2")
+library(ggplot2)
+install.packages("readxl")
+
+# Load the readxl package
+library(readxl)
+
+data <- read.csv("Life Expectancy vs GDP.csv", header = TRUE)
+
+head(data)  # To see the first few rows of the dataset
+tail(data)
+summary(data)
+
+```
+
+```{r}
+
+# Check the current column names
+print(colnames(data))
+
+
+# Change the column name from 'GDP.par Cap' to 'GDP'
+colnames(data)[colnames(data) == "GDP.per.capita"] <- "gdp_per_capita"
+
+# Change the column name from 'GDP.par Cap' to 'GDP'
+colnames(data)[colnames(data) == "Life.expectancy"] <- "LifeExp"
+
+colnames(data)[colnames(data) == "Population..historical.estimates."] <- "pop"
+
+
+colnames(data)[colnames(data) == "Entity"] <- "country"
+colnames(data)[colnames(data) == "Continent"] <- "continent"
+colnames(data)[colnames(data) == "Year"] <- "year"
+
+# Verify the changes
+print(colnames(data))
+
+# Remove missing values (if any)
+data <- na.omit(data)
+
+head(data)
+tail(data)
+
+```
+
+## Data Splitting:
+
+Before building any model it's essential to preprocess the data. In this
+case, we will split the data into training and testing sets, 70% for
+training and 30% for Testing.
+
+```{r}
+
+# Select only the necessary columns (GDP per capita, life expectancy, and year)
+data_set <- data %>% select(gdp_per_capita, LifeExp, year)
+
+# Split the data into training and testing sets
+set.seed(123) # for reproducibility
+train_index <- createDataPartition(data_set$LifeExp, p = 0.7, 
+                                   list = FALSE, 
+                                   times = 1)
+
+train_data <- data_set[train_index, ]
+test_data <- data_set[-train_index, ]
+
+
+```
+
+# Methods
+
+Visualization plays a crucial role in this exploration, illustrating the
+temporal evolution of life expectancy across different countries
+throughout the years. Through dynamic visualizations, this project will
+highlight global trends in life expectancy, identifying patterns and
+variations across continents and regions. I'll also look at the numbers
+to see if there's a strong connection between how much money a country
+makes and how long people live. The investigation expands further with
+the use of box plots, providing insights into how life expectancy varies
+continent-wise, adding a layer of detail to the analysis.
+
+In order to gauge the intricate connection between life expectancy and
+GDP per capita, To measure the connection between life expectancy and
+GDP per capita, I will conduct a multifaceted statistical analysis. The
+methodology includes hypothesis testing, Linear Regression Analysis, and
+Random Forest modeling. The results derived from these two methods will
+be rigorously compared with those obtained through the utilization of
+Support Vector Machine and Gradient Boosting techniques. Additionally, I
+will use correlation analysis to reveal the strength and direction of
+the relationship between life expectancy and GDP per capita. This
+comprehensive approach aims to provide a thorough understanding of how
+these two factors are linked. Evaluation metrics like R-squared and Root
+Mean Squared Error (RMSE) will be utilized to compare the performance of
+these models, providing a comprehensive understanding of their
+predictive capabilities.
+
+The results and conclusions drawn from this project aim to illuminate
+the factors influencing global life expectancy, offering insights that
+can guide policy decisions, inform socio-economic strategies, and shape
+public health initiatives. Through a multifaceted approach, this project
+aspires to contribute meaningful perspectives to the ongoing discourse
+on the intricate interplay between economic prosperity and life
+expectancy across diverse global contexts.
+
+# Choropleth Map
+
+A choropleth map is a type of thematic map that uses colors or shading
+to represent statistical data across geographic regions or areas. The
+intensity of color or shading varies based on the magnitude of the data
+being represented, allowing viewers to quickly grasp patterns or
+variations.
+
+```{r}
+# Install the required packages
+install.packages(c("plotly", "viridis"))
+
+# Load the libraries
+library(plotly)
+library(viridis)
+
+# Filter the data for the year 2018
+filtered_data <- data[data$year == 2018, ]
+
+# Create a choropleth map
+choropleth_map <- plot_geo(
+  data = filtered_data,
+  locationmode = "country names",
+  locations = ~Country,  # Replace with the appropriate column name
+  z = ~LifeExp,
+  text = ~Country
+) %>%
+  add_trace(
+    z = ~LifeExp,
+    colorbar = list(title = 'Life Expectancy'),
+    colorscale = viridis(100, option = "D")
+  ) %>%
+  layout(
+    title = 'Life Expectancy Choropleth Map Year of 2018',
+    geo = list(
+      projection = list(type = 'natural earth')
+    )
+  )
+
+# Show the map
+choropleth_map
+
+```
+
+
+```{r}
+
+install.packages(c("plotly", "viridis"))
+
+library(plotly)
+library(viridis)
+
+filtered_data <- data[data$year == 2018, ]
+
+choropleth_map <- plot_geo(
+  data = filtered_data,
+  locationmode = "country names",
+  locations = ~Country,
+  z = ~LifeExp,
+  text = ~Country
+)
+
+choropleth_map <- add_trace(
+  choropleth_map,
+  z = ~LifeExp,
+  colorbar = list(title = 'Life Expectancy'),
+  colorscale = viridis(100, option = "D")
+)
+
+choropleth_map <- layout(
+  choropleth_map,
+  title = 'Life Expectancy Choropleth Map Year of 2018',
+  geo = list(
+    projection = list(type = 'natural earth')
+  )
+)
+
+choropleth_map
+
+```
+
+The above choropleth map is visualizing life expectancy data across
+different countries or regions in the year 2018. Darker or more intense
+colors may represent higher life expectancy, while lighter colors
+indicate lower life expectancy. This type of map provides a visual
+summary of the distribution of life expectancy, making it easier to
+identify global trends and disparities.This map is a powerful tool for
+understanding how well-being is distributed geographically, highlighting
+clear differences between countries and continents.
+
+##Scatter Plot for Life Expectancy vs GDP per Capita
+
+A scatter plot is useful for identifying trends, correlations, or
+patterns in the data. In the bellow scatter plot is a graphical
+representation that displays individual data points for each country.
+
+```{r}
+install.packages("plotly")
+library(plotly)
+# Filter the data for the year 2018
+data_2018 <- subset(data, year == 2018)
+
+# Create a scatter plot with color based on the continent for the year 2018
+fig <- plot_ly(data_2018, x = ~gdp_per_capita, y = ~LifeExp, color = ~continent,
+               size = ~pop,  # Use the 'pop' column for bubble size
+               colors = 'Set1', mode = "markers",
+               text = ~paste("Country: ", Country, "<br>Continent: ", continent, "<br>Population: ", pop)) %>%
+       layout(title = "Scatter Plot: GDP per capita vs Life Expectancy (2018)",
+              xaxis = list(title = "GDP per capita"),
+              yaxis = list(title = "Life Expectancy"))
+
+# Show the plot
+fig
+
+```
+
+The scatterplot visually representing the relationship between life
+expectancy and GDP per capita in year of 2018, offering a compelling
+insight into how the economic prosperity of a country correlates with
+the life expectancy of its citizens. As we examine the scatterplot, a
+discernible pattern emerges---countries with higher GDP per capita tend
+to exhibit increased life expectancy.
+
+Each point on the plot corresponds to a specific country, with the
+x-axis representing the GDP per capita and the y-axis representing life
+expectancy. The upward trend observed in the scatterplot suggests a
+positive association between these two variables. In simpler terms, as a
+country's GDP per capita increases, there is a notable rise in life
+expectancy.
+
+This relationship underscores the potential impact of economic
+well-being on the overall health and longevity of a population. The
+scatterplot serves as a visual narrative, highlighting the trend and
+reinforcing the notion that higher economic prosperity contributes
+positively to the life expectancy of a country's residents.
+
+# Box Plots
+
+A box plot showcasing life expectancy data by continent provides a
+concise and insightful visualization of the distribution and central
+tendencies of life expectancy across different regions. Each box
+represents a continent, displaying the interquartile range (IQR),
+median, and potential outliers.
+
+```{r}
+par(mfrow=c(1,2))
+
+# Box plot of Life Expectancy by Continent
+ggplot(data, aes(x = continent, y = LifeExp, fill = continent)) +
+  geom_boxplot() +
+  ggtitle("Life Expectancy by Continent") +
+  xlab("Continent") +
+  ylab("Life Expectancy")
+
+# Box plot of GPD per Capita by Continent
+ggplot(data, aes(x = continent, y = gdp_per_capita, fill = continent)) +
+  geom_boxplot() +
+  ggtitle("GDP per capita by Continent") +
+  xlab("Continent") +
+  ylab("GDP per capita")
+
+
+```
+
+The box plot visualizing GDP per capita by continent, a compelling trend
+emerges as higher GDP levels are associated with increased Life
+Expectancy. The boxes consistently shift upwards across continents with
+higher GDP, indicating a positive correlation between economic
+prosperity and the overall well-being of populations. This observation
+suggests that countries with higher GDP per capita tend to exhibit not
+only stronger economic performance but also elevated life expectancies,
+providing valuable insights into the interconnected dynamics of economic
+development and public health on a global scale.
+
+# Hypothesis Test
+
+Hypothesis testing for correlation involves testing whether the observed
+correlation coefficient is significantly different from zero.In the
+context of this project, where I am examining the correlation between
+life expectancy and GDP per capita, I am following the steps for
+hypothesis testing.
+
+$$
+\begin{align*}
+{Hypothesis\ Test:} \\
+\begin{align*}
+& H_0: \text{There is no significant correlation between life expectancy and GDP per capita (\(\rho = 0\)).} \\
+& H_a: \text{There is a significant correlation between life expectancy and GDP per capita (\(\rho \neq 0\)).}
+\end{align*}
+$$
+
+$$
+\begin{align*}
+{Interpret\ Results:}
+\begin{align*}
+& \text{If p-value} < \alpha, \text{reject the null hypothesis.} \\
+& \text{If p-value} \geq \alpha, \text{fail to reject the null hypothesis.}
+\end{align*}
+$$
+
+```{r}
+
+# Calculate Correlation Coefficient
+correlation_coefficient <- cor(data$LifeExp, data$gdp_per_capita)
+
+# Conduct Hypothesis Test
+cor_test_result <- cor.test(data$LifeExp, data$gdp_per_capita)
+
+# Interpret Results
+cat("Observed Correlation Coefficient:", correlation_coefficient, "\n")
+cat("p-value:", cor_test_result$p.value, "\n")
+
+# Check if the p-value is less than the significance level (e.g., 0.05)
+if (cor_test_result$p.value < 0.05) {
+  cat("Reject the null hypothesis. There is a significant correlation.\n")
+} else {
+  cat("Fail to reject the null hypothesis. There is not enough evidence of a significant correlation.\n")
+}
+
+```
+
+The observed correlation coefficient of 0.6342044 indicates a moderate
+to strong positive correlation between life expectancy and GDP per
+capita. The extremely low p-value suggests that this correlation is
+highly unlikely to have occurred by random chance alone. Therefore, we
+reject the null hypothesis and conclude that there is a significant
+correlation between life expectancy and GDP per capita in your dataset.
+
+# Correlation Matrix:
+
+A correlation matrix is a statistical table that displays the
+correlation coefficients between several variables. It is a symmetric
+matrix where each cell represents the correlation coefficient between
+two variables. Correlation coefficients quantify the strength and
+direction of a linear relationship between two variables.
+
+The correlation coefficient is a numerical value ranging from -1 to 1.
+Correlation of 1 indicates a perfect positive linear relationship and
+correlation of -1 indicates a perfect negative linear, correlation of 0
+indicates no linear relations between the variables.
+
+```{r}
+# Visualize the correlation matrix as a heatmap using corrplot
+install.packages("corrplot")  # Install corrplot package if you haven't already
+library(corrplot)
+
+# Customize and display the correlation heatmap
+corrplot(
+  correlation_matrix,                  # Data: correlation matrix
+  method = "color",                    # Color representation of correlation values
+  type = "upper",                      # Display upper triangle only (to avoid redundancy)
+  tl.col = "gray",                    # Label color
+  tl.srt = 45,                         # Label rotation angle
+  title = "Correlation Coefficient\n(Life Expectancy, GDP per Capita, Population)",  # Plot title
+  addCoef.col = "gray",               # Color of correlation coefficients
+  tl.pos = "lt",                       # Label position: left and top
+  tl.cex = 0.8                         # Label text size
+)
+
+# Calculate the correlation matrix between Population, Life Expectancy, and GDP per Capita
+correlation_matrix <- cor(data[c("LifeExp", "gdp_per_capita", "pop")])
+
+# Print the correlation matrix
+print("Correlation Matrix:")
+print(correlation_matrix)
+
+
+```
+
+The correlation coefficient between Life Expectancy and GDP per Capita
+is approximately 0.60. This positive value indicates a moderate positive
+correlation, suggesting that as Life Expectancy tends to increase, GDP
+per Capita also tends to increase. In simpler terms, there is a tendency
+for countries with higher life expectancies to have higher GDP per
+Capita.
+
+# Model Building and Prediction
+
+## Linnear Regression Model
+
+Linear Regression is a machine learning algorithm used to model the
+relationship between a dependent variable and one or more independent
+variables. It assumes a linear relationship between the variables,
+aiming to find the best-fitting line that minimizes the sum of squared
+differences between observed and predicted values.
+
+\$\$
+
+Linear Regression Equation: \\ Y = \beta\_0 + \beta\_1 X_1 + \beta\_2
+X_2 + \ldots + \beta\_n X_n + \varepsilon \\ $$
+
+$$ \\begin{align\*} \\
+
+In this equation: \\ Y: \text{Dependent variable}\\
+
+\beta\_0: \text{Y-intercept, the constant term}\\
+
+\beta\_1, \beta\_2, \ldots, \beta\_n:
+\text{Coefficients of the independent variables } (X_1, X_2, \ldots,
+X_n)\\
+
+X_1, X_2, \ldots, X_n: \text{Independent variables}\\
+
+\varepsilon:
+\text{Error term, representing unobserved factors affecting the dependent variable.}
+
+\$\$
+
+Linear regression model to predict life expectancy:
+
+```{r}
+
+# Build a linear regression model
+lm_model <- lm(LifeExp ~ gdp_per_capita, data = train_data)
+
+summary(lm_model)
+
+```
+
+In the linear regression model suggests a significant positive
+relationship between GDP per capita and life expectancy. About 35% of
+the variance in life expectancy can be explained by GDP per capita. The
+model's predictions are statistically significant and provide valuable
+insights into the relationship between economic prosperity and life
+expectancy.
+
+# Linear Regression Scatter Plot
+
+```{r}
+
+# Load the necessary libraries
+library(plotly)
+
+# Create a scatter plot of actual vs predicted values
+scatter_plot <- plot_ly(data = test_data, 
+                        x = ~LifeExp, 
+                        y = ~predictions, 
+                        text = ~paste("Actual: ", LifeExp, "<br>Predicted: ", predictions)) %>%
+  add_trace(type = "scatter", mode = "markers", marker = list(size = 7, opacity = 0.9)) %>%
+  add_trace(x = ~LifeExp, y = ~LifeExp, mode = "lines", 
+            line = list(color = 'red', width = 2, dash = 'dash'),
+            text = 'Ideal Prediction Line') %>%
+  layout(title = "Actual vs. Predicted Life Expectancy",
+         xaxis = list(title = "Actual Life Expectancy"),
+         yaxis = list(title = "Predicted Life Expectancy"),
+         hovermode = "closest")
+
+# Show the plot
+scatter_plot
+
+```
+
+The scatterplot for Linear Regression showing the connection between
+life expectancy and GDP per capita an interesting pattern. Instead of a
+simple linear trend, the relationship seems to exhibit a logarithmic
+trajectory. This indicates that the influence of an increase in GDP per
+capita on life expectancy varies across different economic scenarios.
+
+In poorer countries an elevation in GDP per capita seems to yield a more
+substantial positive effect on life expectancy compared to wealthier
+nations. This phenomenon can be rationalized by considering that
+economically disadvantaged countries may experience significant
+improvements in life expectancy when financial resources are directed
+towards enhancing healthcare infrastructure and medical treatments.
+
+#Random Forest Regressor model
+
+In order to explore a more advanced approach to predict life expectancy
+based on GDP per capita. I'm using a Random Forest regressor.
+
+Random Forest is a powerful ensemble learning algorithm used for both
+classification and regression tasks. It was introduced by Leo Breiman in
+2001. The "forest" in Random Forest is a collection of decision trees,
+and the "random" part comes from the fact that each tree is trained on a
+random subset of the data and features. $$
+\text{Regression:}\\ \hat{y}_{\text{RF}} = \frac{1}{n} \sum_{i=1}^{n} \hat{y}_i 
+$$
+
+\$\$ \text{Classification}: \\
+
+\hat{y}\_{\text{RF}} = \text{mode}(\hat{y}\_1, \hat{y}\_2, \ldots,
+\hat{y}\_n) \$\$ Random Forest is widely used in various fields due to
+its versatility and effectiveness in producing high-quality predictions.
+
+```{r}
+
+# Load libraries
+library(caret)
+library(randomForest)
+library(dplyr)
+
+# Build a Random Forest Regressor model
+rf_model <- randomForest(LifeExp ~ gdp_per_capita, data = train_data, ntree = 100)
+
+# Make predictions on the test set
+test_data$predictions_rf <- predict(rf_model, newdata = test_data)
+
+# Calculate R-squared score for Random Forest
+rf_r_squared <- 1 - sum((test_data$LifeExp - test_data$predictions_rf)^2) / sum((test_data$LifeExp - mean(test_data$LifeExp))^2)
+print(paste("Random Forest R-squared Score: ", round(rf_r_squared, 2)))
+
+# Calculate RMSE for Random Forest Regressor
+
+rmse_rf <- sqrt(mean((test_data$predictions_rf - test_data$LifeExp)^2))
+rmse_rf
+rf_model 
+
+```
+
+This Random Forest model is specified for regression, indicating that it
+is designed to predict a continuous outcome, which aligns with the
+nature of the life expectancy variable.
+
+The Random Forest consists of an ensemble of decision trees. In this
+case, there are 100 trees in the forest. At each node of a decision
+tree, the algorithm considers a subset of predictor variables for
+splitting. Here only 1 variable is tried at each split. This can
+contribute to the diversity of the trees in the ensemble. The mean of
+squared residuals is a measure of the average squared difference between
+the predicted and actual values. In this context, it is 70.18432. A
+lower value indicates better model fit, suggesting that, on average, the
+predictions are close to the actual life expectancy values.
+
+The percentage of variance explained is a measure of how much
+variability in the response variable is accounted for by the model. In
+this case, the model explains 56.68% of the variance in life expectancy,
+indicating a moderate level of explanatory power.
+
+Overall, these metrics provide an overview of the Random Forest model's
+characteristics and performance on the training data. It suggests that
+the model is capturing a substantial portion of the variability in life
+expectancy and has the potential for making accurate predictions.
+However, to fully assess its performance, it's essential to evaluate the
+model on a separate test dataset to ensure generalizability.
+
+# Random Forest Scatter Plot
+
+The output of the Random Forest model indicates promising
+characteristics, with a moderate percentage of variance explained
+(56.68%) and a mean squared residual of 70.18432. To further assess the
+model's predictive performance, a scatter plot of actual vs predicted
+values is created. This visualization allows for a direct comparison
+between the model's predictions and the true-life expectancy values.
+
+```{r}
+# Create a scatter plot of actual vs. predicted values for Random Forest model
+ggplot(data = test_data, aes(x = LifeExp, y = predictions_rf)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed") +
+  labs(x = "Actual Life Expectancy", y = "Predicted Life Expectancy", 
+       title = "Actual vs. Predicted Life Expectancy (Random Forest Model)") +
+  theme_minimal()
+
+```
+
+The scatter plot showcases individual data points where the x-axis
+represents the actual life expectancy values, and the y-axis represents
+the corresponding predicted values generated by the Random Forest model.
+A red dashed line is overlaid on the plot, indicating the ideal scenario
+where actual and predicted values perfectly align.
+
+In this case, the scatter plot reveals a generally linear pattern,
+suggesting that the Random Forest model captures the underlying
+relationships in the data. Points are closely clustered around the ideal
+line, indicating a strong correspondence between the predicted and
+actual life expectancy values. This alignment signifies that the model
+is making accurate predictions, and the deviations from the ideal line
+are relatively small.
+
+Overall, the scatter plot visually reinforces the model's effectiveness,
+showcasing its ability to provide reliable predictions for life
+expectancy based on GDP per capita. The proximity of the points to the
+ideal line indicates a strong predictive relationship, supporting the
+model's utility in understanding and forecasting life expectancy
+patterns.
+
+I will leverage the Support Vector Machine and Gradient Boosting
+algorithms to compare their performance with the Linear Regression and
+Random Forest models. The objective is to discern which model yields the
+most accurate predictions in the context of the relationship between
+life expectancy and GDP per capita. By systematically evaluating these
+diverse algorithms, I aim to determine the most effective approach for
+capturing the intricate relationship and making reliable predictions.
+
+# Build a Support Vector Machine Regressor model
+
+A Support Vector Machine is a supervised machine learning algorithm used
+for classification and regression tasks. The main idea behind SVM is to
+find a hyperplane that best separates the data into different classes.
+The hyperplane chosen is the one that maximizes the margin, which is the
+distance between the hyperplane and the nearest data point from each
+class.
+
+The equation of a linear Support Vector Machine is as follows: \$\$
+
+f(\mathbf{x}) = \text{sign}(\mathbf{w} \cdot \mathbf{x} + b) \\ \$\$
+
+\$\$ \text{Here:}\\ f(\mathbf{x}) \text{ is the decision function}\\
+
+\mathbf{w} \text{ is the weight vector}\\
+
+\mathbf{x} \text{ is the input vector} \\
+
+b \text{ is the bias term.} \\
+
+$$
+The optimization problem associated with SVM can be represented as:
+$$
+
+\text{Minimize } \frac{1}{2}\|\mathbf{w}\|\^2\\\
+\$\$
+
+\$\$ Subject to the constraints:
+
+y_i(\mathbf{w} \cdot \mathbf{x}\_i + b) \geq 1 \text{ for } i = 1, 2,
+\ldots, N \$\$
+
+```{r}
+# Load the necessary library
+install.packages("e1071")
+library(e1071)
+
+# Build a Support Vector Machine Regressor model
+svm_model <- svm(LifeExp ~ gdp_per_capita, data = train_data)
+
+# Make predictions on the test set
+test_data$predictions_svm <- predict(svm_model, newdata = test_data)
+
+# Calculate R-squared score for SVM
+svm_r_squared <- 1 - sum((test_data$LifeExp - test_data$predictions_svm)^2) / sum((test_data$LifeExp - mean(test_data$LifeExp))^2)
+
+print(paste("SVM R-squared Score: ", round(svm_r_squared, 2)))
+
+```
+
+# Build a Gradient Boosting Regressor model
+
+Gradient Boosting is an ensemble learning technique used for both
+regression and classification tasks. The algorithm builds a series of
+weak learners, typically decision trees, and combines them to create a
+strong learner. Gradient Boosting focuses on minimizing the errors of
+the previous models by adding new models that correct the mistakes of
+the existing ones.
+
+\$\$ F_m(x) = F\_{m-1}(x) + \nu h_m(x)
+
+\$\$
+
+\$\$ \text{where:} \\
+
+F_m(x) \text{ is the model at iteration } m \\
+
+F\_{m-1}(x) \text{ is the model from the previous iteration} \\
+
+\nu \text{ is the learning rate, a hyperparameter in the range (0, 1)}
+\\
+
+h_m(x)
+\text{ is the weak learner (e.g., a decision tree) trained to correct the residuals}
+
+\$\$
+
+```{r}
+# Load the necessary library
+install.packages("gbm")
+library(gbm)
+
+# Build a Gradient Boosting Regressor model
+gbm_model <- gbm(LifeExp ~ gdp_per_capita, data = train_data, n.trees = 100, interaction.depth = 3)
+
+# Make predictions on the test set
+test_data$predictions_gbm <- predict(gbm_model, newdata = test_data, n.trees = 100)
+
+# Calculate R-squared score for Gradient Boosting
+gbm_r_squared <- 1 - sum((test_data$LifeExp - test_data$predictions_gbm)^2) / sum((test_data$LifeExp - mean(test_data$LifeExp))^2)
+
+print(paste("Gradient Boosting R-squared Score: ", round(gbm_r_squared, 2)))
+
+```
+
+# Model Evaluation
+
+```{r}
+# Calculate RMSE for linear regression model
+lm_rmse <- sqrt(mean((test_data$LifeExp - predict(lm_model, newdata = test_data))^2))
+
+# Calculate RMSE for Random Forest
+rf_rmse <- sqrt(mean((test_data$LifeExp - test_data$predictions_rf)^2))
+
+# Calculate RMSE for Gradient Boosting
+gbm_rmse <- sqrt(mean((test_data$LifeExp - test_data$predictions_gbm)^2))
+
+# Calculate RMSE for SVM
+svm_rmse <- sqrt(mean((test_data$LifeExp - test_data$predictions_svm)^2))
+
+# Print RMSE values
+print(paste("Linear Regression RMSE: ", round(lm_rmse, 2)))
+print(paste("Random Forest RMSE: ", round(rf_rmse, 2)))
+print(paste("Gradient Boosting RMSE: ", round(gbm_rmse, 2)))
+print(paste("SVM RMSE: ", round(svm_rmse, 2)))
+
+```
+
+# RMSE Comparison of Regression Models
+
+Root Mean Squared Error is a metric used to evaluate the accuracy of a
+regression model, it provides a measure of how well the model's
+predictions match the actual observed values. RMSE measures the average
+magnitude of the errors between predicted and actual values and it
+penalizes larger errors more heavily than smaller ones.
+
+```{r}
+
+# Create a bar chart to compare RMSE values
+model_names <- c("Linear Regression", "Random Forest", "Gradient Boosting", "SVM")
+rmse_values <- c(lm_rmse, rf_rmse, gbm_rmse, svm_rmse)
+
+barplot(rmse_values, names.arg = model_names, col = "skyblue", 
+        main = "RMSE Comparison of Regression Models",
+        ylab = "Root Mean Squared Error (RMSE)", ylim = c(0, max(rmse_values) + 5))
+
+```
+
+Usually, a lower RMSE value indicates better model performance, as it
+means the model's predictions are closer to the actual values.
+Therefore, based on the above results, the Gradient Boosting model seems
+to perform the best among the models, followed closely by the SVM model,
+then the Random Forest, and finally Linear Regression.
+
+# R-Squared Comparison of Regression Models
+
+The R-squared is a statistical measure of how well the independent
+variables in a regression model explain the variability of the dependent
+variable. It is a scale from 0 to 1. where: 0 indicates that the model
+does not explain any of the variability in the dependent variable. 1
+indicates that the model explains all of the variability in the
+dependent variable.
+
+```{r}
+r2_lm <- 1 - (sum((test_data$LifeExp - test_data$predictions)^2) / sum((test_data$LifeExp - mean(test_data$LifeExp))^2))
+r2_rf <- 1 - (sum((test_data$LifeExp - test_data$predictions_rf)^2) / sum((test_data$LifeExp - mean(test_data$LifeExp))^2))
+r2_gbm <- 1 - (sum((test_data$LifeExp - test_data$predictions)^2) / sum((test_data$LifeExp - mean(test_data$LifeExp))^2))
+r2_svm <- 1 - (sum((test_data$LifeExp - test_data$predictions_rf)^2) / sum((test_data$LifeExp - mean(test_data$LifeExp))^2))
+
+
+```
+
+```{r}
+# Create a bar chart to compare R-squared values
+model_names <- c("Linear Regression", "Random Forest", "Gradient Boosting", "SVM")
+r_squared_values <- c(lm_r_squared, rf_r_squared, gbm_r_squared, svm_r_squared)
+
+barplot(r_squared_values, names.arg = model_names, col = "lightgreen", 
+        main = "R-Squared Comparison of Regression Models",
+        ylab = "R-Squared", ylim = c(0, max(r_squared_values) + 0.2))
+
+# Add values on top of the bars
+text(1:4, r_squared_values + 0.05, round(r_squared_values, 2), pos = 3, cex = 1.3, col = "black")
+
+```
+
+R-squared value of 0.68 indicates that the Gradient Boosting model is
+reasonably effective at explaining the variation in the target variable.
+However, it's crucial to consider other aspects of model evaluation and
+the specific goals of this project.
+
+# Limitations:
+
+The project relies on available data, and any gaps or inaccuracies in
+the data could impact the results. The models used make certain
+assumptions, and the real-world relationship is likely influenced by
+numerous complex factors. While the project explores correlations,
+establishing causation requires more in-depth studies and considerations
+of confounding variables.
+
+# Areas For Further Analysis
+
+To conduct a more extensive analysis, someone can explore how the
+relationship evolves over time by incorporating data from additional
+years. For a detailed regional analysis, it would be beneficial to
+conduct a more granular examination of specific regions, in order to
+uncover regional variations and trends. Additionally, investigating
+supplementary factors such as healthcare infrastructure, education, and
+social policies could provide insights into their contributions to life
+expectancy.
+
+# Conculation
+
+This project has undertaken a thorough investigation into the complex
+interplay between life expectancy and GDP per capita, leveraging a
+diverse set of machine learning models and algorithms. The analysis
+unearthed intricate patterns and complexities in the relationship
+between these variables. Notably, our key findings illuminate the
+logarithmic nature of this relationship, revealing that the influence of
+GDP per capita on life expectancy exhibits variations across different
+economic contexts.
+
+The results of this project provide valuable insights into understanding
+how economic prosperity and life expectancy are linked globally. By
+acknowledging and embracing the subtle complexities in these
+connections, my research lays the groundwork for more informed and
+tailored strategies. Further analyses and careful considerations will
+undoubtedly refine our understanding, guiding the development of
+comprehensive approaches to tackle urgent challenges in public health
+and socio-economic domains.
+
+```{r}
+
+
+```
